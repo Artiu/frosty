@@ -84,7 +84,9 @@ class VideoBar extends StatelessWidget {
                         ? () {
                             // remove until this page is the top level
                             Navigator.popUntil(
-                                context, (route) => route.isFirst);
+                              context,
+                              (route) => route.isFirst,
+                            );
                             Navigator.push(
                               context,
                               MaterialPageRoute(

@@ -133,7 +133,7 @@ class LargeStreamCard extends StatelessWidget {
     final streamerName =
         getReadableName(streamInfo.userName, streamInfo.userLogin);
 
-    return AnimateScale(
+    return InkWell(
       onTap: () {
         // remove until this page is the top level
         Navigator.popUntil(context, (route) => route.isFirst);

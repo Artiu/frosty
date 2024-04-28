@@ -26,18 +26,18 @@ class CategoryCard extends StatelessWidget {
     return InkWell(
       onTap: isTappable
           ? () {
-        // remove until this page is the top level
-        Navigator.popUntil(context, (route) => route.isFirst);
-        Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CategoryStreams(
-                        categoryId: category.id,
-                    ),
+              // remove until this page is the top level
+              Navigator.popUntil(context, (route) => route.isFirst);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CategoryStreams(
+                    categoryId: category.id,
                   ),
-                )
-          : null;
-      },
+                ),
+              );
+            }
+          : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
