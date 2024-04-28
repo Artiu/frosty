@@ -7,17 +7,17 @@ class SettingsTileRoute extends StatelessWidget {
   final Widget child;
 
   const SettingsTileRoute({
-    Key? key,
+    super.key,
     required this.leading,
     required this.title,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: leading,
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(title),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(

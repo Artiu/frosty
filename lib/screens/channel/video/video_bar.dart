@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/constants.dart';
 import 'package:frosty/models/stream.dart';
 import 'package:frosty/screens/home/top/categories/category_streams.dart';
+import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/profile_picture.dart';
 
 class VideoBar extends StatelessWidget {
@@ -11,16 +11,18 @@ class VideoBar extends StatelessWidget {
   final Color? titleTextColor;
   final Color? subtitleTextColor;
   final FontWeight? subtitleTextWeight;
+  final EdgeInsets padding;
 
   const VideoBar({
-    Key? key,
+    super.key,
     required this.streamInfo,
     this.showCategory = true,
     this.tappableCategory = true,
     this.titleTextColor,
     this.subtitleTextColor,
     this.subtitleTextWeight,
-  }) : super(key: key);
+    this.padding = const EdgeInsets.all(12),
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,17 +30,18 @@ class VideoBar extends StatelessWidget {
     final category =
         streamInfo.gameName.isNotEmpty ? streamInfo.gameName : 'No Category';
 
-    final streamerName = regexEnglish.hasMatch(streamInfo.userName)
-        ? streamInfo.userName
-        : '${streamInfo.userName} (${streamInfo.userLogin})';
+    final streamerName =
+        getReadableName(streamInfo.userName, streamInfo.userLogin);
 
     return Padding(
-      padding: const EdgeInsets.all(10),
+      padding: padding,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProfilePicture(userLogin: streamInfo.userLogin),
-          const SizedBox(width: 10.0),
+          ProfilePicture(
+            userLogin: streamInfo.userLogin,
+            radius: 28,
+          ),
+          const SizedBox(width: 12),
           Flexible(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -57,7 +60,7 @@ class VideoBar extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 5.0),
+                const SizedBox(height: 2),
                 Tooltip(
                   message: 'Title: ${streamInfo.title.trim()}',
                   showDuration: const Duration(seconds: 5),
@@ -75,7 +78,7 @@ class VideoBar extends StatelessWidget {
                   ),
                 ),
                 if (showCategory) ...[
-                  const SizedBox(height: 5.0),
+                  const SizedBox(height: 2),
                   InkWell(
                     onTap: tappableCategory && streamInfo.gameName.isNotEmpty
                         ? () {
@@ -86,7 +89,6 @@ class VideoBar extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => CategoryStreams(
-                                  categoryName: streamInfo.gameName,
                                   categoryId: streamInfo.gameId,
                                 ),
                               ),

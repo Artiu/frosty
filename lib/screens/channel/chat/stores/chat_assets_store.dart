@@ -22,6 +22,8 @@ abstract class ChatAssetsStoreBase with Store {
   /// Contains any custom FFZ mod and vip badges for the channel.
   RoomFFZ? ffzRoomInfo;
 
+  String? sevenTvEmoteSetId;
+
   @computed
   List<Emote> get bttvEmotes =>
       _emoteToObject.values.where((emote) => isBTTV(emote)).toList();
@@ -42,7 +44,7 @@ abstract class ChatAssetsStoreBase with Store {
 
   /// The map of emote words to their image or GIF URL. May be used by anyone in the chat.
   @readonly
-  var _emoteToObject = <String, Emote>{};
+  var _emoteToObject = ObservableMap<String, Emote>();
 
   /// The emotes that are "owned" and may be used by the current user.
   @readonly
@@ -109,8 +111,10 @@ abstract class ChatAssetsStoreBase with Store {
 
     _disposeReaction = autorun((_) {
       if (_recentEmotes.length > 48) _recentEmotes.removeLast();
-      prefs.setStringList('recent_emotes',
-          _recentEmotes.map((emote) => jsonEncode(emote)).toList());
+      prefs.setStringList(
+        'recent_emotes',
+        _recentEmotes.map((emote) => jsonEncode(emote)).toList(),
+      );
     });
   }
 
@@ -153,17 +157,32 @@ abstract class ChatAssetsStoreBase with Store {
         twitchApi.getEmotesGlobal(headers: headers).catchError(onError),
         twitchApi
             .getEmotesChannel(id: channelId, headers: headers)
-            .catchError(onError),
+            .then((emotes) {
+          _userEmoteSectionToEmotes.update(
+            'Channel Emotes',
+            (existingEmoteSet) => [...existingEmoteSet, ...emotes],
+            ifAbsent: () => emotes.toList(),
+          );
+
+          return emotes;
+        }).catchError(onError),
         sevenTVApi.getEmotesGlobal().catchError(onError),
-        sevenTVApi.getEmotesChannel(id: channelId).catchError(onError),
+        sevenTVApi.getEmotesChannel(id: channelId).then((data) {
+          final (setId, emotes) = data;
+          sevenTvEmoteSetId = setId;
+          return emotes;
+        }).catchError(onError),
         ffzApi.getRoomInfo(id: channelId).then((ffzRoom) {
           final (roomInfo, emotes) = ffzRoom;
 
           ffzRoomInfo = roomInfo;
           return emotes;
         }).catchError(onError),
-      ]).then((assets) => assets.expand((list) => list)).then((emotes) =>
-          _emoteToObject = {for (final emote in emotes) emote.name: emote});
+      ]).then((assets) => assets.expand((list) => list)).then(
+            (emotes) => _emoteToObject = {
+              for (final emote in emotes) emote.name: emote,
+            }.asObservable(),
+          );
 
   @action
   Future<void> badgesFuture({
@@ -177,17 +196,15 @@ abstract class ChatAssetsStoreBase with Store {
         twitchApi
             .getBadgesGlobal(headers: headers)
             .then((badges) => twitchBadgesToObject.addAll(badges))
-            .then((_) => twitchApi
-                .getBadgesChannel(id: channelId, headers: headers)
-                .then((badges) => twitchBadgesToObject.addAll(badges))
-                .catchError(onError)),
+            .then(
+              (_) => twitchApi
+                  .getBadgesChannel(id: channelId, headers: headers)
+                  .then((badges) => twitchBadgesToObject.addAll(badges))
+                  .catchError(onError),
+            ),
         ffzApi
             .getBadges()
             .then((badges) => _userToFFZBadges = badges)
-            .catchError(onError),
-        sevenTVApi
-            .getBadges()
-            .then((badges) => _userTo7TVBadges = badges)
             .catchError(onError),
         bttvApi
             .getBadges()
@@ -201,20 +218,37 @@ abstract class ChatAssetsStoreBase with Store {
     required Map<String, String> headers,
     required Function onError,
   }) async {
-    final userEmotes = await Future.wait(emoteSets.map((setId) => twitchApi
-        .getEmotesSets(setId: setId, headers: headers)
-        .catchError(onError)));
+    final userEmotes = await Future.wait(
+      emoteSets.map(
+        (setId) => twitchApi
+            .getEmotesSets(setId: setId, headers: headers)
+            .catchError(onError),
+      ),
+    );
 
     for (final emoteSet in userEmotes) {
       if (emoteSet.isNotEmpty) {
         if (emoteSet.first.type == EmoteType.twitchSub) {
-          final owner = await twitchApi.getUser(
-              id: emoteSet.first.ownerId, headers: headers);
-          _userEmoteSectionToEmotes.update(
-            owner.displayName,
-            (existingEmoteSet) => [...existingEmoteSet, ...emoteSet],
-            ifAbsent: () => emoteSet,
-          );
+          final ownerId = emoteSet.first.ownerId;
+
+          // Check for tuurbo emote sets (e.g., monkey set).
+          if (ownerId == 'twitch') {
+            _userEmoteSectionToEmotes.update(
+              'Global Emotes',
+              (existingEmoteSet) => [...existingEmoteSet, ...emoteSet],
+              ifAbsent: () => emoteSet,
+            );
+          } else {
+            final owner = await twitchApi.getUser(
+              id: ownerId,
+              headers: headers,
+            );
+            _userEmoteSectionToEmotes.update(
+              owner.displayName,
+              (existingEmoteSet) => [...existingEmoteSet, ...emoteSet],
+              ifAbsent: () => emoteSet,
+            );
+          }
         } else if (emoteSet.first.type == EmoteType.twitchGlobal) {
           _userEmoteSectionToEmotes.update(
             'Global Emotes',

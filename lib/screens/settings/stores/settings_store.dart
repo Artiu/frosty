@@ -56,6 +56,8 @@ abstract class _SettingsStoreBase with Store {
   // * Video Settings
   // Player defaults
   static const defaultShowVideo = true;
+  static const defaultDefaultToHighestQuality = false;
+  static const defaultShowLatency = true;
 
   // Overlay defaults
   static const defaultShowOverlay = true;
@@ -66,6 +68,14 @@ abstract class _SettingsStoreBase with Store {
   @JsonKey(defaultValue: defaultShowVideo)
   @observable
   var showVideo = defaultShowVideo;
+
+  @JsonKey(defaultValue: defaultDefaultToHighestQuality)
+  @observable
+  var defaultToHighestQuality = defaultDefaultToHighestQuality;
+
+  @JsonKey(defaultValue: defaultShowLatency)
+  @observable
+  var showLatency = defaultShowLatency;
 
   // Overlay options
   @JsonKey(defaultValue: defaultShowOverlay)
@@ -83,6 +93,8 @@ abstract class _SettingsStoreBase with Store {
   @action
   void resetVideoSettings() {
     showVideo = defaultShowVideo;
+    defaultToHighestQuality = defaultDefaultToHighestQuality;
+    showLatency = defaultShowLatency;
 
     showOverlay = defaultShowOverlay;
     toggleableOverlay = defaultToggleableOverlay;
@@ -163,8 +175,9 @@ abstract class _SettingsStoreBase with Store {
   var showChatMessageDividers = defaultShowChatMessageDividers;
 
   @JsonKey(
-      defaultValue: defaultTimestampType,
-      unknownEnumValue: TimestampType.disabled)
+    defaultValue: defaultTimestampType,
+    unknownEnumValue: TimestampType.disabled,
+  )
   @observable
   var timestampType = defaultTimestampType;
 

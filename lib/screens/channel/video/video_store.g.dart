@@ -9,14 +9,6 @@ part of 'video_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$VideoStore on VideoStoreBase, Store {
-  Computed<String>? _$videoUrlComputed;
-
-  @override
-  String get videoUrl =>
-      (_$videoUrlComputed ??= Computed<String>(() => super.videoUrl,
-              name: 'VideoStoreBase.videoUrl'))
-          .value;
-
   late final _$_pausedAtom =
       Atom(name: 'VideoStoreBase._paused', context: context);
 
@@ -107,6 +99,88 @@ mixin _$VideoStore on VideoStoreBase, Store {
     });
   }
 
+  late final _$_availableStreamQualitiesAtom =
+      Atom(name: 'VideoStoreBase._availableStreamQualities', context: context);
+
+  List<String> get availableStreamQualities {
+    _$_availableStreamQualitiesAtom.reportRead();
+    return super._availableStreamQualities;
+  }
+
+  @override
+  List<String> get _availableStreamQualities => availableStreamQualities;
+
+  @override
+  set _availableStreamQualities(List<String> value) {
+    _$_availableStreamQualitiesAtom
+        .reportWrite(value, super._availableStreamQualities, () {
+      super._availableStreamQualities = value;
+    });
+  }
+
+  late final _$_streamQualityIndexAtom =
+      Atom(name: 'VideoStoreBase._streamQualityIndex', context: context);
+
+  int get streamQualityIndex {
+    _$_streamQualityIndexAtom.reportRead();
+    return super._streamQualityIndex;
+  }
+
+  @override
+  int get _streamQualityIndex => streamQualityIndex;
+
+  @override
+  set _streamQualityIndex(int value) {
+    _$_streamQualityIndexAtom.reportWrite(value, super._streamQualityIndex, () {
+      super._streamQualityIndex = value;
+    });
+  }
+
+  late final _$_latencyAtom =
+      Atom(name: 'VideoStoreBase._latency', context: context);
+
+  String? get latency {
+    _$_latencyAtom.reportRead();
+    return super._latency;
+  }
+
+  @override
+  String? get _latency => latency;
+
+  @override
+  set _latency(String? value) {
+    _$_latencyAtom.reportWrite(value, super._latency, () {
+      super._latency = value;
+    });
+  }
+
+  late final _$updateStreamQualitiesAsyncAction =
+      AsyncAction('VideoStoreBase.updateStreamQualities', context: context);
+
+  @override
+  Future<void> updateStreamQualities() {
+    return _$updateStreamQualitiesAsyncAction
+        .run(() => super.updateStreamQualities());
+  }
+
+  late final _$setStreamQualityAsyncAction =
+      AsyncAction('VideoStoreBase.setStreamQuality', context: context);
+
+  @override
+  Future<void> setStreamQuality(String newStreamQuality) {
+    return _$setStreamQualityAsyncAction
+        .run(() => super.setStreamQuality(newStreamQuality));
+  }
+
+  late final _$_setStreamQualityIndexAsyncAction =
+      AsyncAction('VideoStoreBase._setStreamQualityIndex', context: context);
+
+  @override
+  Future<void> _setStreamQualityIndex(int newStreamQualityIndex) {
+    return _$_setStreamQualityIndexAsyncAction
+        .run(() => super._setStreamQualityIndex(newStreamQualityIndex));
+  }
+
   late final _$initVideoAsyncAction =
       AsyncAction('VideoStoreBase.initVideo', context: context);
 
@@ -184,7 +258,7 @@ mixin _$VideoStore on VideoStoreBase, Store {
   @override
   String toString() {
     return '''
-videoUrl: ${videoUrl}
+
     ''';
   }
 }

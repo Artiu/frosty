@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -31,6 +32,8 @@ abstract class VideoStoreBase with Store {
   /// The [SimplePip] instance used for initiating PiP on Android.
   final pip = SimplePip();
 
+  var _firstTimeSettingQuality = true;
+
   /// The video web view params used for enabling auto play.
   late final PlatformWebViewControllerCreationParams _videoWebViewParams;
 
@@ -39,18 +42,48 @@ abstract class VideoStoreBase with Store {
       WebViewController.fromPlatformCreationParams(_videoWebViewParams)
         ..setBackgroundColor(Colors.black)
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..addJavaScriptChannel('VideoPause', onMessageReceived: (message) {
-          _paused = true;
-          if (Platform.isAndroid) pip.setIsPlaying(false);
-        })
-        ..addJavaScriptChannel('VideoPlaying', onMessageReceived: (message) {
-          _paused = false;
-          if (Platform.isAndroid) pip.setIsPlaying(true);
-          videoWebViewController.runJavaScript(
-              'document.getElementsByTagName("video")[0].muted = false;');
-          videoWebViewController.runJavaScript(
-              'document.getElementsByTagName("video")[0].volume = 1.0;');
-        })
+        ..addJavaScriptChannel(
+          'Latency',
+          onMessageReceived: (message) {
+            _latency = message.message;
+          },
+        )
+        ..addJavaScriptChannel(
+          'StreamQualities',
+          onMessageReceived: (message) {
+            final data = jsonDecode(message.message) as List;
+            _availableStreamQualities =
+                data.map((item) => item as String).toList();
+          },
+        )
+        ..addJavaScriptChannel(
+          'VideoPause',
+          onMessageReceived: (message) {
+            _paused = true;
+            if (Platform.isAndroid) pip.setIsPlaying(false);
+          },
+        )
+        ..addJavaScriptChannel(
+          'VideoPlaying',
+          onMessageReceived: (message) async {
+            if (settingsStore.defaultToHighestQuality &&
+                _firstTimeSettingQuality) {
+              await _setStreamQualityIndex(1);
+
+              _firstTimeSettingQuality = false;
+            } else {
+              _paused = false;
+              if (Platform.isAndroid) pip.setIsPlaying(true);
+
+              videoWebViewController.runJavaScript(
+                'document.getElementsByTagName("video")[0].muted = false;',
+              );
+              videoWebViewController.runJavaScript(
+                'document.getElementsByTagName("video")[0].volume = 1.0;',
+              );
+            }
+          },
+        )
         ..setNavigationDelegate(
           NavigationDelegate(
             onPageFinished: (_) => initVideo(),
@@ -62,6 +95,8 @@ abstract class VideoStoreBase with Store {
 
   /// Disposes the overlay reactions.
   late final ReactionDisposer _disposeOverlayReaction;
+
+  ReactionDisposer? _disposeAndroidAutoPipReaction;
 
   /// If the video is currently paused.
   ///
@@ -85,11 +120,23 @@ abstract class VideoStoreBase with Store {
   @readonly
   StreamTwitch? _streamInfo;
 
-  /// The video URL to use for the webview. Controls will be disabled when custom overlay is enabled.
-  @computed
-  String get videoUrl => settingsStore.showOverlay
-      ? 'https://player.twitch.tv/?channel=$userLogin&controls=false&muted=false&parent=frosty'
-      : 'https://player.twitch.tv/?channel=$userLogin&muted=false&parent=frosty';
+  @readonly
+  List<String> _availableStreamQualities = [];
+
+  // The current stream quality index
+  @readonly
+  int _streamQualityIndex = 0;
+
+  // The current stream quality string
+  String get streamQuality =>
+      _availableStreamQualities.elementAtOrNull(_streamQualityIndex) ?? 'Auto';
+
+  @readonly
+  String? _latency;
+
+  /// The video URL to use for the webview.
+  String get videoUrl =>
+      'https://player.twitch.tv/?channel=$userLogin&muted=false&parent=frosty';
 
   VideoStoreBase({
     required this.userLogin,
@@ -113,13 +160,6 @@ abstract class VideoStoreBase with Store {
           .setMediaPlaybackRequiresUserGesture(false);
     }
 
-    // On Android, enable auto PiP mode (setAutoEnterEnabled) if the device supports it.
-    if (Platform.isAndroid) {
-      SimplePip.isAutoPipAvailable.then((isAutoPipAvailable) {
-        if (isAutoPipAvailable) pip.setAutoPipMode();
-      });
-    }
-
     // Initialize the [_overlayTimer] to hide the overlay automatically after 5 seconds.
     _overlayTimer =
         Timer(const Duration(seconds: 5), () => _overlayVisible = false);
@@ -130,7 +170,159 @@ abstract class VideoStoreBase with Store {
       (_) => videoWebViewController.loadRequest(Uri.parse(videoUrl)),
     );
 
+    // On Android, enable auto PiP mode (setAutoEnterEnabled) if the device supports it.
+    if (Platform.isAndroid) {
+      _disposeAndroidAutoPipReaction = autorun(
+        (_) async {
+          if (settingsStore.showVideo && await SimplePip.isAutoPipAvailable) {
+            pip.setAutoPipMode();
+          } else {
+            pip.setAutoPipMode(autoEnter: false);
+          }
+        },
+      );
+    }
+
     updateStreamInfo();
+  }
+
+  @action
+  Future<void> updateStreamQualities() async {
+    try {
+      await videoWebViewController.runJavaScript('''
+        {
+          const asyncQuerySelector = (selector) => new Promise((resolve) => {
+            if (document.querySelector(selector)) {
+              return resolve(document.querySelector(selector));
+            }
+            const observer = new MutationObserver((mutations) => {
+              if (document.querySelector(selector)) {
+                observer.disconnect();
+                resolve(document.querySelector(selector));
+              }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+          });
+          (async () => {
+            (await asyncQuerySelector('[data-a-target="player-settings-button"]')).click();
+            (await asyncQuerySelector('[data-a-target="player-settings-menu-item-quality"]')).click();
+            await asyncQuerySelector('[data-a-target="player-settings-submenu-quality-option"] label div');
+            const qualities = [...document.querySelectorAll('[data-a-target="player-settings-submenu-quality-option"] label div')].map((el) => el.textContent);
+            StreamQualities.postMessage(JSON.stringify(qualities));
+            (await asyncQuerySelector('.tw-drop-down-menu-item-figure')).click();
+            (await asyncQuerySelector('[data-a-target="player-settings-menu"] [role="menuitem"] button')).click();
+          })();
+        }
+      ''');
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  @action
+  Future<void> setStreamQuality(String newStreamQuality) async {
+    final indexOfStreamQuality =
+        _availableStreamQualities.indexOf(newStreamQuality);
+    await _setStreamQualityIndex(indexOfStreamQuality);
+  }
+
+  @action
+  Future<void> _setStreamQualityIndex(int newStreamQualityIndex) async {
+    try {
+      await videoWebViewController.runJavaScript('''
+        {
+          const asyncQuerySelector = (selector) => new Promise((resolve) => {
+            if (document.querySelector(selector)) {
+              return resolve(document.querySelector(selector));
+            }
+            const observer = new MutationObserver((mutations) => {
+              if (document.querySelector(selector)) {
+                observer.disconnect();
+                resolve(document.querySelector(selector));
+              }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+          });
+          (async () => {
+            (await asyncQuerySelector('[data-a-target="player-settings-button"]')).click();
+            (await asyncQuerySelector('[data-a-target="player-settings-menu-item-quality"]')).click();
+            await asyncQuerySelector('[data-a-target="player-settings-submenu-quality-option"] input');
+            [...document.querySelectorAll('[data-a-target="player-settings-submenu-quality-option"] input')][$newStreamQualityIndex].click();
+            (await asyncQuerySelector('.tw-drop-down-menu-item-figure')).click();
+            (await asyncQuerySelector('[data-a-target="player-settings-menu"] [role="menuitem"] button')).click();
+          })();
+        }
+      ''');
+      _streamQualityIndex = newStreamQualityIndex;
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  Future<void> _hideDefaultOverlay() async {
+    try {
+      await videoWebViewController.runJavaScript('''
+        {
+          const hideElements = (...el) => {
+            el.forEach((el) => {
+              el?.style.setProperty("display", "none", "important");
+            })
+          }
+          const hide = () => {
+            const topBar = document.querySelector(".top-bar");
+            const playerControls = document.querySelector(".player-controls");
+            const channelDisclosures = document.querySelector("#channel-player-disclosures");
+            hideElements(topBar, playerControls, channelDisclosures);
+          }
+          const observer = new MutationObserver(() => {
+            const videoOverlay = document.querySelector('.video-player__overlay');
+            if(!videoOverlay) return;
+            hide();
+            const videoOverlayObserver = new MutationObserver(hide);
+            videoOverlayObserver.observe(videoOverlay, { childList: true, subtree: true });
+            observer.disconnect();
+          });
+          observer.observe(document.body, { childList: true, subtree: true });
+        }
+      ''');
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  Future<void> _listenOnLatencyChanges() async {
+    try {
+      await videoWebViewController.runJavaScript('''
+        {
+          const asyncQuerySelector = (selector) => new Promise((resolve) => {
+            if (document.querySelector(selector)) {
+              return resolve(document.querySelector(selector));
+            }
+            const observer = new MutationObserver((mutations) => {
+              if (document.querySelector(selector)) {
+                observer.disconnect();
+                resolve(document.querySelector(selector));
+              }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+          });
+          (async () => {
+            (await asyncQuerySelector('[data-a-target="player-settings-button"]')).click();
+            (await asyncQuerySelector('[data-a-target="player-settings-menu-item-advanced"]')).click();
+            (await asyncQuerySelector('[data-a-target="player-settings-submenu-advanced-video-stats"] input')).click();
+            (await asyncQuerySelector('.tw-drop-down-menu-item-figure')).click();
+            (await asyncQuerySelector('[data-a-target="player-settings-menu"] [role="menuitem"] button')).click();
+            (await asyncQuerySelector('[data-a-target="player-overlay-video-stats"]')).style.display = "none";
+            const observer = new MutationObserver((changes) => {
+              Latency.postMessage(changes[0].target.textContent);
+            })
+            observer.observe(document.querySelector('[aria-label="Latency To Broadcaster"]'), { characterData: true, attributes: false, childList: false, subtree: true });
+          })();
+        }
+      ''');
+    } catch (e) {
+      debugPrint(e.toString());
+    }
   }
 
   /// Initializes the video webview.
@@ -140,9 +332,21 @@ abstract class VideoStoreBase with Store {
       // Add event listeners to notify the JavaScript channels when the video plays and pauses.
       try {
         videoWebViewController.runJavaScript(
-            'document.getElementsByTagName("video")[0].addEventListener("pause", () => VideoPause.postMessage("video paused"));');
+          '''document.getElementsByTagName("video")[0].addEventListener("pause", () => {
+              VideoPause.postMessage("video paused");
+              document.getElementsByTagName("video")[0].textTracks[0].mode = "hidden";
+          });''',
+        );
         videoWebViewController.runJavaScript(
-            'document.getElementsByTagName("video")[0].addEventListener("playing", () => VideoPlaying.postMessage("video playing"));');
+          '''document.getElementsByTagName("video")[0].addEventListener("playing", () => {
+              VideoPlaying.postMessage("video playing")
+              document.getElementsByTagName("video")[0].textTracks[0].mode = "hidden";
+          });''',
+        );
+        if (settingsStore.showOverlay) {
+          await _hideDefaultOverlay();
+          await _listenOnLatencyChanges();
+        }
       } catch (e) {
         debugPrint(e.toString());
       }
@@ -154,7 +358,7 @@ abstract class VideoStoreBase with Store {
     if (Platform.isIOS) {
       final deviceInfo = DeviceInfoPlugin();
       final info = await deviceInfo.iosInfo;
-      if (info.model?.toLowerCase().contains('ipad') == true) {
+      if (info.model.toLowerCase().contains('ipad')) {
         _isIPad = true;
       } else {
         _isIPad = false;
@@ -198,7 +402,9 @@ abstract class VideoStoreBase with Store {
   Future<void> updateStreamInfo() async {
     try {
       _streamInfo = await twitchApi.getStream(
-          userLogin: userLogin, headers: authStore.headersTwitch);
+        userLogin: userLogin,
+        headers: authStore.headersTwitch,
+      );
     } catch (e) {
       debugPrint(e.toString());
 
@@ -232,6 +438,8 @@ abstract class VideoStoreBase with Store {
   @action
   void handleRefresh() {
     HapticFeedback.lightImpact();
+    _paused = true;
+    _firstTimeSettingQuality = true;
     videoWebViewController.reload();
     updateStreamInfo();
   }
@@ -244,7 +452,8 @@ abstract class VideoStoreBase with Store {
             .runJavaScript('document.getElementsByTagName("video")[0].play();');
       } else {
         videoWebViewController.runJavaScript(
-            'document.getElementsByTagName("video")[0].pause();');
+          'document.getElementsByTagName("video")[0].pause();',
+        );
       }
     } catch (e) {
       debugPrint(e.toString());
@@ -261,7 +470,8 @@ abstract class VideoStoreBase with Store {
         pip.enterPipMode(autoEnter: true);
       } else if (Platform.isIOS) {
         videoWebViewController.runJavaScript(
-            'document.getElementsByTagName("video")[0].requestPictureInPicture();');
+          'document.getElementsByTagName("video")[0].requestPictureInPicture();',
+        );
       }
     } catch (e) {
       debugPrint(e.toString());
@@ -278,5 +488,6 @@ abstract class VideoStoreBase with Store {
     }
 
     _disposeOverlayReaction();
+    _disposeAndroidAutoPipReaction?.call();
   }
 }

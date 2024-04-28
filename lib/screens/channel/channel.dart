@@ -7,8 +7,6 @@ import 'package:frosty/apis/bttv_api.dart';
 import 'package:frosty/apis/ffz_api.dart';
 import 'package:frosty/apis/seventv_api.dart';
 import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/constants.dart';
-import 'package:frosty/main.dart';
 import 'package:frosty/screens/channel/chat/chat.dart';
 import 'package:frosty/screens/channel/chat/details/chat_details_store.dart';
 import 'package:frosty/screens/channel/chat/stores/chat_assets_store.dart';
@@ -19,6 +17,8 @@ import 'package:frosty/screens/channel/video/video_overlay.dart';
 import 'package:frosty/screens/channel/video/video_store.dart';
 import 'package:frosty/screens/settings/stores/auth_store.dart';
 import 'package:frosty/screens/settings/stores/settings_store.dart';
+import 'package:frosty/theme.dart';
+import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/app_bar.dart';
 import 'package:frosty/widgets/notification.dart';
 import 'package:provider/provider.dart';
@@ -32,11 +32,11 @@ class VideoChat extends StatefulWidget {
   final String userLogin;
 
   const VideoChat({
-    Key? key,
+    super.key,
     required this.userId,
     required this.userName,
     required this.userLogin,
-  }) : super(key: key);
+  });
 
   @override
   State<VideoChat> createState() => _VideoChatState();
@@ -79,9 +79,7 @@ class _VideoChatState extends State<VideoChat> {
 
     final appBar = FrostyAppBar(
       title: Text(
-        regexEnglish.hasMatch(_chatStore.displayName)
-            ? _chatStore.displayName
-            : '${_chatStore.displayName} (${_chatStore.channelName})',
+        getReadableName(_chatStore.displayName, _chatStore.channelName),
       ),
     );
 
@@ -118,6 +116,7 @@ class _VideoChatState extends State<VideoChat> {
           final videoOverlay = VideoOverlay(
             videoStore: _videoStore,
             chatStore: _chatStore,
+            settingsStore: settingsStore,
           );
 
           if (_videoStore.paused || _videoStore.streamInfo == null) {
@@ -175,7 +174,7 @@ class _VideoChatState extends State<VideoChat> {
                 child: IgnorePointer(
                   ignoring: !videoBarVisible,
                   child: ColoredBox(
-                    color: Theme.of(context).canvasColor,
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -184,7 +183,7 @@ class _VideoChatState extends State<VideoChat> {
                             streamInfo: _videoStore.streamInfo!,
                             tappableCategory: false,
                           ),
-                        const Divider(height: 1, thickness: 1),
+                        const Divider(),
                       ],
                     ),
                   ),
@@ -275,6 +274,20 @@ class _VideoChatState extends State<VideoChat> {
                             : Theme.of(context).scaffoldBackgroundColor,
                         child: chat,
                       );
+            final landscapeChat = AnimatedContainer(
+              curve: Curves.ease,
+              duration: const Duration(milliseconds: 200),
+              width: _chatStore.expandChat
+                  ? MediaQuery.of(context).size.width / 2
+                  : MediaQuery.of(context).size.width *
+                      _chatStore.settings.chatWidth,
+              color: _chatStore.settings.fullScreen
+                  ? Colors.black.withOpacity(
+                      _chatStore.settings.fullScreenChatOverlayOpacity,
+                    )
+                  : Theme.of(context).scaffoldBackgroundColor,
+              child: chat,
+            );
 
                       final overlayChat = Visibility(
                         visible: settingsStore.fullScreenChatOverlay,
@@ -289,6 +302,19 @@ class _VideoChatState extends State<VideoChat> {
                           ),
                         ),
                       );
+            final overlayChat = Visibility(
+              visible: settingsStore.fullScreenChatOverlay,
+              maintainState: true,
+              child: Theme(
+                data: FrostyThemes().dark,
+                child: DefaultTextStyle(
+                  style: DefaultTextStyle.of(context)
+                      .style
+                      .copyWith(color: Colors.white),
+                  child: landscapeChat,
+                ),
+              ),
+            );
 
                       return ColoredBox(
                         color: settingsStore.showVideo
@@ -346,6 +372,48 @@ class _VideoChatState extends State<VideoChat> {
                         ),
                       );
                     }
+            return ColoredBox(
+              color: settingsStore.showVideo
+                  ? Colors.black
+                  : Theme.of(context).scaffoldBackgroundColor,
+              child: SafeArea(
+                bottom: false,
+                left: (settingsStore.landscapeCutout ==
+                            LandscapeCutoutType.both ||
+                        settingsStore.landscapeCutout ==
+                            LandscapeCutoutType.left)
+                    ? false
+                    : true,
+                right: (settingsStore.landscapeCutout ==
+                            LandscapeCutoutType.both ||
+                        settingsStore.landscapeCutout ==
+                            LandscapeCutoutType.right)
+                    ? false
+                    : true,
+                child: settingsStore.showVideo
+                    ? settingsStore.fullScreen
+                        ? Stack(
+                            children: [
+                              player,
+                              if (settingsStore.showOverlay)
+                                Row(
+                                  children: settingsStore.landscapeChatLeftSide
+                                      ? [overlayChat, Expanded(child: overlay)]
+                                      : [Expanded(child: overlay), overlayChat],
+                                ),
+                            ],
+                          )
+                        : Row(
+                            children: settingsStore.landscapeChatLeftSide
+                                ? [landscapeChat, Expanded(child: video)]
+                                : [Expanded(child: video), landscapeChat],
+                          )
+                    : Column(
+                        children: [appBar, Expanded(child: chat)],
+                      ),
+              ),
+            );
+          }
 
                     SystemChrome.setEnabledSystemUIMode(
                       SystemUiMode.manual,

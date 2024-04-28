@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:frosty/models/badges.dart';
 import 'package:frosty/models/emotes.dart';
 import 'package:http/http.dart';
 
@@ -12,11 +11,11 @@ class SevenTVApi {
 
   /// Returns a map of global 7TV emotes to their URL.
   Future<List<Emote>> getEmotesGlobal() async {
-    final url = Uri.parse('https://api.7tv.app/v2/emotes/global');
+    final url = Uri.parse('https://7tv.io/v3/emote-sets/global');
 
     final response = await _client.get(url);
     if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body) as List;
+      final decoded = jsonDecode(response.body)['emotes'] as List;
       final emotes = decoded.map((emote) => Emote7TV.fromJson(emote));
 
       return emotes
@@ -27,49 +26,26 @@ class SevenTVApi {
     }
   }
 
-  /// Returns a map of a channel's 7TV emotes to their URL.
-  Future<List<Emote>> getEmotesChannel({required String id}) async {
-    final url = Uri.parse('https://api.7tv.app/v2/users/$id/emotes');
+  /// Returns a tuple containing the emote set ID and a map of a channel's 7TV
+  /// emotes to their URL.
+  Future<(String, List<Emote>)> getEmotesChannel({required String id}) async {
+    final url = Uri.parse('https://7tv.io/v3/users/twitch/$id');
 
     final response = await _client.get(url);
     if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body) as List;
-      final emotes = decoded.map((emote) => Emote7TV.fromJson(emote));
+      final decoded = jsonDecode(response.body);
+      final emoteSetId = decoded['emote_set']['id'] as String;
+      final emotes = (decoded['emote_set']['emotes'] as List)
+          .map((emote) => Emote7TV.fromJson(emote));
 
-      return emotes
-          .map((emote) => Emote.from7TV(emote, EmoteType.sevenTVChannel))
-          .toList();
+      return (
+        emoteSetId,
+        emotes
+            .map((emote) => Emote.from7TV(emote, EmoteType.sevenTVChannel))
+            .toList()
+      );
     } else {
       return Future.error('Failed to get 7TV channel emotes');
-    }
-  }
-
-  /// Returns a map of user IDS to a list of their 7TV badges.
-  Future<Map<String, List<ChatBadge>>> getBadges() async {
-    final url =
-        Uri.parse('https://api.7tv.app/v2/badges?user_identifier=twitch_id');
-
-    final response = await _client.get(url);
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body)['badges'] as List;
-      final badges = decoded.map((emote) => BadgeInfo7TV.fromJson(emote));
-
-      final result = <String, List<ChatBadge>>{};
-      for (final badge in badges) {
-        for (final userId in badge.users) {
-          final entry = result[userId];
-          final normalBadge = ChatBadge.from7TV(badge);
-          if (entry == null) {
-            result[userId] = [normalBadge];
-          } else {
-            entry.add(normalBadge);
-          }
-        }
-      }
-
-      return result;
-    } else {
-      return Future.error('Failed to get 7TV badges');
     }
   }
 }

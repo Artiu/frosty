@@ -1,0 +1,3 @@
+Bug Fixes
+• Fixed emote "Copy name" button copying the full name with parentheses
+• Fixed multiline message clipping in chat text field

@@ -1,4 +1,3 @@
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -14,7 +13,7 @@ class SettingsListSlider extends StatelessWidget {
   final int? divisions;
 
   const SettingsListSlider({
-    Key? key,
+    super.key,
     required this.title,
     required this.trailing,
     this.subtitle,
@@ -23,7 +22,7 @@ class SettingsListSlider extends StatelessWidget {
     this.min = 0.0,
     this.max = 1.0,
     this.divisions,
-  }) : super(key: key);
+  });
 
   static const _textStyle = TextStyle(fontWeight: FontWeight.w500);
 
@@ -36,9 +35,12 @@ class SettingsListSlider extends StatelessWidget {
         children: [
           Text(title, style: _textStyle),
           const Spacer(),
-          Text(trailing,
-              style: _textStyle.copyWith(
-                  fontFeatures: [const FontFeature.tabularFigures()])),
+          Text(
+            trailing,
+            style: _textStyle.copyWith(
+              fontFeatures: [const FontFeature.tabularFigures()],
+            ),
+          ),
         ],
       ),
       subtitle: Column(

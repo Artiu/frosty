@@ -10,8 +10,7 @@ import 'package:mobx/mobx.dart';
 class SearchResultsCategories extends StatelessWidget {
   final SearchStore searchStore;
 
-  const SearchResultsCategories({Key? key, required this.searchStore})
-      : super(key: key);
+  const SearchResultsCategories({super.key, required this.searchStore});
 
   @override
   Widget build(BuildContext context) {
@@ -57,18 +56,11 @@ class SearchResultsCategories extends StatelessWidget {
               );
             }
 
-            return SliverGrid.count(
-              crossAxisCount: 2,
-              mainAxisSpacing: 20,
-              children: categories.data
-                  .map(
-                    (category) => GridTile(
-                      child: CategoryCard(
-                        category: category,
-                      ),
-                    ),
-                  )
-                  .toList(),
+            return SliverList.builder(
+              itemCount: categories.data.length,
+              itemBuilder: (context, index) => CategoryCard(
+                category: categories.data[index],
+              ),
             );
         }
       },

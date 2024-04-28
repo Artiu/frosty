@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/constants.dart';
 import 'package:frosty/models/channel.dart';
 import 'package:frosty/screens/channel/channel.dart';
 import 'package:frosty/screens/home/search/search_store.dart';
+import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/animate_scale.dart';
 import 'package:frosty/widgets/block_report_modal.dart';
-import 'package:frosty/widgets/list_tile.dart';
 import 'package:frosty/widgets/loading_indicator.dart';
 import 'package:frosty/widgets/profile_picture.dart';
 import 'package:frosty/widgets/translucent_overlay_route.dart';
@@ -20,10 +18,10 @@ class SearchResultsChannels extends StatefulWidget {
   final String query;
 
   const SearchResultsChannels({
-    Key? key,
+    super.key,
     required this.searchStore,
     required this.query,
-  }) : super(key: key);
+  });
 
   @override
   State<SearchResultsChannels> createState() => _SearchResultsChannelsState();
@@ -34,10 +32,11 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
     try {
       final channelInfo = await widget.searchStore.searchChannel(search);
 
-      if (!mounted) return;
+      if (!context.mounted) return;
       // remove until this page is the top level
       Navigator.popUntil(context, (route) => route.isFirst);
       // push new VedioChat
+
       Navigator.push(
         context,
         TranslucentOverlayRoute(
@@ -50,8 +49,10 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
       );
     } catch (error) {
       final snackBar = SnackBar(
-        content: AlertMessage(message: error.toString()),
-        behavior: SnackBarBehavior.floating,
+        content: AlertMessage(
+          message: error.toString(),
+          centered: false,
+        ),
       );
 
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -80,19 +81,20 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
             );
           case FutureStatus.fulfilled:
             final results = (future.result as List<ChannelQuery>).where(
-                (channel) => !widget.searchStore.authStore.user.blockedUsers
-                    .map((blockedUser) => blockedUser.userId)
-                    .contains(channel.id));
+              (channel) => !widget.searchStore.authStore.user.blockedUsers
+                  .map((blockedUser) => blockedUser.userId)
+                  .contains(channel.id),
+            );
 
             return SliverList(
               delegate: SliverChildListDelegate.fixed(
                 [
                   ...results.map(
                     (channel) {
-                      final displayName = regexEnglish
-                              .hasMatch(channel.displayName)
-                          ? channel.displayName
-                          : '${channel.displayName} (${channel.broadcasterLogin})';
+                      final displayName = getReadableName(
+                        channel.displayName,
+                        channel.broadcasterLogin,
+                      );
 
                       return AnimateScale(
                         onTap: () {
@@ -114,7 +116,6 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
                           HapticFeedback.lightImpact();
 
                           showModalBottomSheet(
-                            backgroundColor: Colors.transparent,
                             context: context,
                             builder: (context) => BlockReportModal(
                               authStore: widget.searchStore.authStore,
@@ -124,11 +125,12 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
                             ),
                           );
                         },
-                        child: FrostyListTile(
-                          isThreeLine: false,
-                          title: displayName,
+                        child: ListTile(
+                          title: Text(displayName),
                           leading: ProfilePicture(
-                              userLogin: channel.broadcasterLogin),
+                            userLogin: channel.broadcasterLogin,
+                            radius: 16,
+                          ),
                           subtitle: channel.isLive
                               ? Row(
                                   children: [
@@ -146,11 +148,11 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
                       );
                     },
                   ),
-                  FrostyListTile(
-                    title: 'Go to channel "${widget.query}"',
+                  ListTile(
+                    title: Text('Go to channel "${widget.query}"'),
                     onTap: () => _handleSearch(context, widget.query),
                     trailing: const Icon(Icons.chevron_right_rounded),
-                  )
+                  ),
                 ],
               ),
             );

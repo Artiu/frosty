@@ -2,13 +2,11 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:frosty/constants.dart';
-import 'package:frosty/main.dart';
 import 'package:frosty/models/stream.dart';
 import 'package:frosty/screens/channel/channel.dart';
 import 'package:frosty/screens/home/top/categories/category_streams.dart';
 import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/widgets/animate_scale.dart';
+import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/block_report_modal.dart';
 import 'package:frosty/widgets/cached_image.dart';
 import 'package:frosty/widgets/loading_indicator.dart';
@@ -25,11 +23,11 @@ class StreamCard extends StatelessWidget {
   final bool showCategory;
 
   const StreamCard({
-    Key? key,
+    super.key,
     required this.streamInfo,
     required this.showThumbnail,
     this.showCategory = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -51,51 +49,55 @@ class StreamCard extends StatelessWidget {
       aspectRatio: 16 / 9,
       child: FrostyCachedNetworkImage(
         imageUrl: streamInfo.thumbnailUrl.replaceFirst(
-                '-{width}x{height}', '-${thumbnailWidth}x$thumbnailHeight') +
+              '-{width}x{height}',
+              '-${thumbnailWidth}x$thumbnailHeight',
+            ) +
             cacheUrlExtension,
-        placeholder: (context, url) =>
-            const ColoredBox(color: lightGray, child: LoadingIndicator()),
+        placeholder: (context, url) => ColoredBox(
+          color: Colors.grey.shade900,
+          child: const LoadingIndicator(),
+        ),
         useOldImageOnUrlChange: true,
       ),
     );
 
-    final streamerName = regexEnglish.hasMatch(streamInfo.userName)
-        ? streamInfo.userName
-        : '${streamInfo.userName} (${streamInfo.userLogin})';
+    final streamerName =
+        getReadableName(streamInfo.userName, streamInfo.userLogin);
 
     const subFontSize = 14.0;
 
     final fontColor = DefaultTextStyle.of(context).style.color;
 
     final imageSection = ClipRRect(
-        borderRadius: const BorderRadius.all(Radius.circular(5.0)),
-        child: Stack(
-          alignment: AlignmentDirectional.bottomEnd,
-          children: [
-            thumbnail,
-            Container(
-              padding: const EdgeInsets.all(2.0),
-              decoration: const BoxDecoration(
-                color: Color.fromRGBO(0, 0, 0, 0.5),
-                borderRadius: BorderRadius.all(
-                  Radius.circular(3.0),
-                ),
+      borderRadius: const BorderRadius.all(Radius.circular(8)),
+      child: Stack(
+        alignment: AlignmentDirectional.bottomEnd,
+        children: [
+          thumbnail,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: const BoxDecoration(
+              color: Color.fromRGBO(0, 0, 0, 0.5),
+              borderRadius: BorderRadius.all(
+                Radius.circular(6),
               ),
-              margin: const EdgeInsets.all(2.0),
-              child: Uptime(
-                startTime: streamInfo.startedAt,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
+            ),
+            margin: const EdgeInsets.all(4),
+            child: Uptime(
+              startTime: streamInfo.startedAt,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
               ),
-            )
-          ],
-        ));
+            ),
+          ),
+        ],
+      ),
+    );
 
     final streamInfoSection = Padding(
-      padding: const EdgeInsets.only(left: 10.0),
+      padding: const EdgeInsets.only(left: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -103,9 +105,9 @@ class StreamCard extends StatelessWidget {
             children: [
               ProfilePicture(
                 userLogin: streamInfo.userLogin,
-                radius: 10.0,
+                radius: 10,
               ),
-              const SizedBox(width: 5.0),
+              const SizedBox(width: 4),
               Flexible(
                 child: Tooltip(
                   message: 'Streamer: $streamerName',
@@ -114,7 +116,7 @@ class StreamCard extends StatelessWidget {
                     streamerName,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 16.0,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: fontColor,
                     ),
@@ -123,11 +125,10 @@ class StreamCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 5.0),
+          const SizedBox(height: 2),
           Tooltip(
             message: 'Title: ${streamInfo.title.trim()}',
             preferBelow: false,
-            padding: const EdgeInsets.all(10.0),
             child: Text(
               streamInfo.title.trim(),
               overflow: TextOverflow.ellipsis,
@@ -137,7 +138,7 @@ class StreamCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 5.0),
+          const SizedBox(height: 2),
           if (showCategory) ...[
             InkWell(
               onTap: streamInfo.gameName.isNotEmpty
@@ -148,7 +149,6 @@ class StreamCard extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => CategoryStreams(
-                            categoryName: streamInfo.gameName,
                             categoryId: streamInfo.gameId,
                           ),
                         ),
@@ -171,13 +171,14 @@ class StreamCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 5.0),
+            const SizedBox(height: 2),
           ],
           Text(
             '${NumberFormat().format(streamInfo.viewerCount)} viewers',
             style: TextStyle(
               fontSize: subFontSize,
               color: fontColor?.withOpacity(0.8),
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],
@@ -204,7 +205,6 @@ class StreamCard extends StatelessWidget {
         HapticFeedback.mediumImpact();
 
         showModalBottomSheet(
-          backgroundColor: Colors.transparent,
           context: context,
           builder: (context) => BlockReportModal(
             authStore: context.read<AuthStore>(),
@@ -216,7 +216,9 @@ class StreamCard extends StatelessWidget {
       },
       child: Padding(
         padding: EdgeInsets.symmetric(
-            vertical: 10.0, horizontal: showThumbnail ? 15.0 : 5.0),
+          vertical: 8,
+          horizontal: showThumbnail ? 16 : 4,
+        ),
         child: Row(
           children: [
             if (showThumbnail)

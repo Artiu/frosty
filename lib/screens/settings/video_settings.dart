@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:frosty/screens/settings/stores/settings_store.dart';
@@ -8,8 +10,7 @@ import 'package:frosty/widgets/section_header.dart';
 class VideoSettings extends StatelessWidget {
   final SettingsStore settingsStore;
 
-  const VideoSettings({Key? key, required this.settingsStore})
-      : super(key: key);
+  const VideoSettings({super.key, required this.settingsStore});
 
   @override
   Widget build(BuildContext context) {
@@ -22,18 +23,32 @@ class VideoSettings extends StatelessWidget {
             value: settingsStore.showVideo,
             onChanged: (newValue) => settingsStore.showVideo = newValue,
           ),
-          const SectionHeader('Overlay'),
+          if (!Platform.isIOS)
+            SettingsListSwitch(
+              title: 'Default to highest quality',
+              value: settingsStore.defaultToHighestQuality,
+              onChanged: (newValue) =>
+                  settingsStore.defaultToHighestQuality = newValue,
+            ),
+          SettingsListSwitch(
+            title: 'Show latency',
+            value: settingsStore.showLatency,
+            onChanged: (newValue) => settingsStore.showLatency = newValue,
+          ),
+          const SectionHeader('Overlay', showDivider: true),
           SettingsListSwitch(
             title: 'Use custom video overlay',
             subtitle: const Text(
-                'Replaces Twitch\'s default web overlay with a mobile-friendly version.'),
+              'Replaces Twitch\'s default web overlay with a mobile-friendly version.',
+            ),
             value: settingsStore.showOverlay,
             onChanged: (newValue) => settingsStore.showOverlay = newValue,
           ),
           SettingsListSwitch(
             title: 'Long-press player to toggle overlay',
             subtitle: const Text(
-                'Allows switching between Twitch\'s overlay and the custom overlay.'),
+              'Allows switching between Twitch\'s overlay and the custom overlay.',
+            ),
             value: settingsStore.toggleableOverlay,
             onChanged: (newValue) => settingsStore.toggleableOverlay = newValue,
           ),

@@ -10,9 +10,9 @@ class Video extends StatefulWidget {
   final VideoStore videoStore;
 
   const Video({
-    Key? key,
+    super.key,
     required this.videoStore,
-  }) : super(key: key);
+  });
 
   @override
   State<Video> createState() => _VideoState();
@@ -31,10 +31,12 @@ class _VideoState extends State<Video> with WidgetsBindingObserver {
 
   @override
   Future<void> didChangeAppLifecycleState(
-      AppLifecycleState lifecycleState) async {
+    AppLifecycleState lifecycleState,
+  ) async {
     if (Platform.isAndroid &&
         !await SimplePip.isAutoPipAvailable &&
-        lifecycleState == AppLifecycleState.inactive) {
+        lifecycleState == AppLifecycleState.inactive &&
+        widget.videoStore.settingsStore.showVideo) {
       widget.videoStore.requestPictureInPicture();
     }
   }

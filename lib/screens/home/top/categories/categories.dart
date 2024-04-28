@@ -13,9 +13,9 @@ class Categories extends StatefulWidget {
   final ScrollController scrollController;
 
   const Categories({
-    Key? key,
+    super.key,
     required this.scrollController,
-  }) : super(key: key);
+  });
 
   @override
   State<Categories> createState() => _CategoriesState();
@@ -52,18 +52,21 @@ class _CategoriesState extends State<Categories>
 
     _categoriesStore.checkLastTimeRefreshedAndUpdate();
 
-    return RefreshIndicator(
+    return RefreshIndicator.adaptive(
       onRefresh: () async {
         HapticFeedback.lightImpact();
         await _categoriesStore.refreshCategories();
 
         if (_categoriesStore.error != null) {
           final snackBar = SnackBar(
-            content: AlertMessage(message: _categoriesStore.error!),
-            behavior: SnackBarBehavior.floating,
+            content: AlertMessage(
+              message: _categoriesStore.error!,
+              centered: false,
+            ),
           );
 
-          if (!mounted) return;
+          if (!context.mounted) return;
+
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       },
@@ -91,28 +94,28 @@ class _CategoriesState extends State<Categories>
                   child: Center(
                     child: statusWidget,
                   ),
-                )
+                ),
               ],
             );
           }
 
-          return GridView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
+          return Scrollbar(
             controller: widget.scrollController,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              controller: widget.scrollController,
+              itemCount: _categoriesStore.categories.length,
+              itemBuilder: (context, index) {
+                if (index > _categoriesStore.categories.length - 10 &&
+                    _categoriesStore.hasMore) {
+                  _categoriesStore.getCategories();
+                }
+                return CategoryCard(
+                  key: ValueKey(_categoriesStore.categories[index].id),
+                  category: _categoriesStore.categories[index],
+                );
+              },
             ),
-            itemCount: _categoriesStore.categories.length,
-            itemBuilder: (context, index) {
-              if (index > _categoriesStore.categories.length - 10 &&
-                  _categoriesStore.hasMore) {
-                _categoriesStore.getCategories();
-              }
-              return CategoryCard(
-                key: ValueKey(_categoriesStore.categories[index].id),
-                category: _categoriesStore.categories[index],
-              );
-            },
           );
         },
       ),

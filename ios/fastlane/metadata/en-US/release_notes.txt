@@ -1,2 +1,3 @@
 Bug Fixes
-• Fixed audio playing in chat-only mode
+• Fixed stream latency not showing (by @Shingyx on GitHub)
+• Fixed stream latency icon color on light mode

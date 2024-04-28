@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/constants.dart';
 import 'package:frosty/screens/settings/stores/auth_store.dart';
+import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/button.dart';
-import 'package:frosty/widgets/list_tile.dart';
 
 class BlockedUsers extends StatelessWidget {
   final AuthStore authStore;
 
   const BlockedUsers({
-    Key? key,
+    super.key,
     required this.authStore,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
+    return RefreshIndicator.adaptive(
       onRefresh: () async {
         HapticFeedback.lightImpact();
 
@@ -36,15 +34,17 @@ class BlockedUsers extends StatelessWidget {
           return ListView(
             children: authStore.user.blockedUsers.map(
               (blockedUser) {
-                final displayName = regexEnglish
-                        .hasMatch(blockedUser.displayName)
-                    ? blockedUser.displayName
-                    : '${blockedUser.displayName} (${blockedUser.userLogin})';
+                final displayName = getReadableName(
+                  blockedUser.displayName,
+                  blockedUser.userLogin,
+                );
 
-                return FrostyListTile(
-                  title: displayName,
-                  trailing: Button(
-                    color: Colors.red,
+                return ListTile(
+                  title: Text(displayName),
+                  trailing: TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
                     onPressed: () => authStore.showBlockDialog(
                       context,
                       targetUser: displayName,
