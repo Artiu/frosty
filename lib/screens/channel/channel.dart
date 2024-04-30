@@ -240,7 +240,7 @@ class _VideoChatState extends State<VideoChat> {
                   ? 100
                   : MediaQuery.of(context).size.height,
               duration: _videoStore.isDragging
-                  ? const Duration(milliseconds: 50)
+                  ? const Duration(milliseconds: 30)
                   : const Duration(milliseconds: 300),
               child: _videoStore.miniVedioMode
                   ? Dismissible(
@@ -456,7 +456,7 @@ class _VideoChatState extends State<VideoChat> {
 }
 
 class ChannelPageRoute {
-  static final _videoChat = GlobalKey<_VideoChatState>();
+  static var _videoChat = GlobalKey<_VideoChatState>();
   static void navigateTo(
     BuildContext context, {
     required String userId,
@@ -466,11 +466,13 @@ class ChannelPageRoute {
     if (_videoChat.currentState?.widget.userId == userId) {
       _videoChat.currentState?._videoStore.setMiniVedioMode(false);
     } else {
+      _videoChat = GlobalKey<_VideoChatState>();
       Navigator.popUntil(context, (route) => route.isFirst);
       Navigator.push(
         context,
         TranslucentOverlayRoute(
           builder: (context) => VideoChat(
+            key: _videoChat,
             userId: userId,
             userName: userName,
             userLogin: userLogin,
