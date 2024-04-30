@@ -81,6 +81,42 @@ mixin _$VideoStore on VideoStoreBase, Store {
     });
   }
 
+  late final _$_topPositionAtom =
+      Atom(name: 'VideoStoreBase._topPosition', context: context);
+
+  double get topPosition {
+    _$_topPositionAtom.reportRead();
+    return super._topPosition;
+  }
+
+  @override
+  double get _topPosition => topPosition;
+
+  @override
+  set _topPosition(double value) {
+    _$_topPositionAtom.reportWrite(value, super._topPosition, () {
+      super._topPosition = value;
+    });
+  }
+
+  late final _$_isDraggingAtom =
+      Atom(name: 'VideoStoreBase._isDragging', context: context);
+
+  bool get isDragging {
+    _$_isDraggingAtom.reportRead();
+    return super._isDragging;
+  }
+
+  @override
+  bool get _isDragging => isDragging;
+
+  @override
+  set _isDragging(bool value) {
+    _$_isDraggingAtom.reportWrite(value, super._isDragging, () {
+      super._isDragging = value;
+    });
+  }
+
   late final _$_streamInfoAtom =
       Atom(name: 'VideoStoreBase._streamInfo', context: context);
 
@@ -217,6 +253,28 @@ mixin _$VideoStore on VideoStoreBase, Store {
         name: 'VideoStoreBase.setMiniVedioMode');
     try {
       return super.setMiniVedioMode(mode);
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateTopPosition(double topPosition) {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+        name: 'VideoStoreBase.updateTopPosition');
+    try {
+      return super.updateTopPosition(topPosition);
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void updateIsDragging(bool isDragging) {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+        name: 'VideoStoreBase.updateIsDragging');
+    try {
+      return super.updateIsDragging(isDragging);
     } finally {
       _$VideoStoreBaseActionController.endAction(_$actionInfo);
     }

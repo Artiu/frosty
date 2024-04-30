@@ -21,6 +21,7 @@ import 'package:frosty/theme.dart';
 import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/app_bar.dart';
 import 'package:frosty/widgets/notification.dart';
+import 'package:frosty/widgets/translucent_overlay_route.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_pip_mode/actions/pip_actions_layout.dart';
 import 'package:simple_pip_mode/pip_widget.dart';
@@ -223,153 +224,205 @@ class _VideoChatState extends State<VideoChat> {
     );
 
     final videoChat = Observer(
-      builder: (_) {
-        return _videoStore.miniVedioMode
-            ? Positioned(
-                right: 10,
-                bottom: 60,
-                child: SizedBox(
-                  width: 180,
-                  height: 100,
-                  child: Dismissible(
-                    key: ValueKey('${widget.key}_mini'),
-                    onDismissed: (direction) {
-                      Navigator.of(context).pop();
-                    },
-                    child: Scaffold(
-                      body: Observer(
-                        builder: (context) {
-                          SystemChrome.setEnabledSystemUIMode(
-                            SystemUiMode.manual,
-                            overlays: SystemUiOverlay.values,
-                          );
-                          return AspectRatio(aspectRatio: 16 / 9, child: video);
-                        },
+      builder: (context) {
+        return Stack(
+          children: <Widget>[
+            if (!_videoStore.miniVedioMode) Container(color: Colors.black54),
+            AnimatedPositioned(
+              right: _videoStore.miniVedioMode ? 10 : 0,
+              top: _videoStore.miniVedioMode
+                  ? MediaQuery.of(context).size.height - 180
+                  : _videoStore.topPosition,
+              width: _videoStore.miniVedioMode
+                  ? 180
+                  : MediaQuery.of(context).size.width,
+              height: _videoStore.miniVedioMode
+                  ? 100
+                  : MediaQuery.of(context).size.height,
+              duration: _videoStore.isDragging
+                  ? const Duration(milliseconds: 50)
+                  : const Duration(milliseconds: 300),
+              child: _videoStore.miniVedioMode
+                  ? Dismissible(
+                      key: ValueKey('${widget.key}_mini'),
+                      onDismissed: (direction) {
+                        Navigator.of(context).pop();
+                      },
+                      child: Scaffold(
+                        body: Observer(
+                          builder: (context) {
+                            SystemChrome.setEnabledSystemUIMode(
+                              SystemUiMode.manual,
+                              overlays: SystemUiOverlay.values,
+                            );
+                            return AspectRatio(
+                              aspectRatio: 16 / 9,
+                              child: video,
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-              )
-            : Dismissible(
-                key: ValueKey(widget.key),
-                direction: DismissDirection.vertical,
-                onDismissed: (direction) {
-                  _videoStore.setMiniVedioMode(true);
-                },
-                child: Scaffold(
-                  body: Observer(
-                    builder: (context) {
-                      if (orientation == Orientation.landscape &&
-                          !settingsStore.landscapeForceVerticalChat) {
-                        SystemChrome.setEnabledSystemUIMode(
-                          SystemUiMode.immersiveSticky,
-                        );
+                    )
+                  : GestureDetector(
+                      onVerticalDragStart: (_) {
+                        _videoStore.updateIsDragging(true);
+                      },
+                      onVerticalDragUpdate: orientation == Orientation.portrait
+                          ? (details) {
+                              final newPosition =
+                                  _videoStore.topPosition + details.delta.dy;
+                              if (newPosition < 0) return;
+                              final lowerBound = MediaQuery.of(context)
+                                      .size
+                                      .height -
+                                  MediaQuery.of(context).size.width / (16 / 9) -
+                                  MediaQuery.of(context).padding.top;
+                              if (newPosition > lowerBound) return;
 
-                        final landscapeChat = AnimatedContainer(
-                          curve: Curves.ease,
-                          duration: const Duration(milliseconds: 200),
-                          width: _chatStore.expandChat
-                              ? MediaQuery.of(context).size.width / 2
-                              : MediaQuery.of(context).size.width *
-                                  _chatStore.settings.chatWidth,
-                          color: _chatStore.settings.fullScreen
-                              ? Colors.black.withOpacity(
-                                  _chatStore
-                                      .settings.fullScreenChatOverlayOpacity,
-                                )
-                              : Theme.of(context).scaffoldBackgroundColor,
-                          child: chat,
-                        );
+                              _videoStore.updateTopPosition(newPosition);
+                            }
+                          : null,
+                      onVerticalDragEnd: (details) {
+                        _videoStore.updateIsDragging(false);
+                        if (_videoStore.topPosition >
+                            MediaQuery.of(context).size.height * 0.4) {
+                          _videoStore.setMiniVedioMode(true);
+                        } else {
+                          _videoStore.updateTopPosition(0);
+                        }
+                      },
+                      child: Scaffold(
+                        backgroundColor: Colors.transparent,
+                        body: Observer(
+                          builder: (context) {
+                            if (orientation == Orientation.landscape &&
+                                !settingsStore.landscapeForceVerticalChat) {
+                              SystemChrome.setEnabledSystemUIMode(
+                                SystemUiMode.immersiveSticky,
+                              );
 
-                        final overlayChat = Visibility(
-                          visible: settingsStore.fullScreenChatOverlay,
-                          maintainState: true,
-                          child: Theme(
-                            data: FrostyThemes().dark,
-                            child: DefaultTextStyle(
-                              style: DefaultTextStyle.of(context)
-                                  .style
-                                  .copyWith(color: Colors.white),
-                              child: landscapeChat,
-                            ),
-                          ),
-                        );
+                              final landscapeChat = AnimatedContainer(
+                                curve: Curves.ease,
+                                duration: const Duration(milliseconds: 200),
+                                width: _chatStore.expandChat
+                                    ? MediaQuery.of(context).size.width / 2
+                                    : MediaQuery.of(context).size.width *
+                                        _chatStore.settings.chatWidth,
+                                color: _chatStore.settings.fullScreen
+                                    ? Colors.black.withOpacity(
+                                        _chatStore.settings
+                                            .fullScreenChatOverlayOpacity,
+                                      )
+                                    : Theme.of(context).scaffoldBackgroundColor,
+                                child: chat,
+                              );
 
-                        return ColoredBox(
-                          color: settingsStore.showVideo
-                              ? Colors.black
-                              : Theme.of(context).scaffoldBackgroundColor,
-                          child: SafeArea(
-                            bottom: false,
-                            left: (settingsStore.landscapeCutout ==
-                                        LandscapeCutoutType.both ||
-                                    settingsStore.landscapeCutout ==
-                                        LandscapeCutoutType.left)
-                                ? false
-                                : true,
-                            right: (settingsStore.landscapeCutout ==
-                                        LandscapeCutoutType.both ||
-                                    settingsStore.landscapeCutout ==
-                                        LandscapeCutoutType.right)
-                                ? false
-                                : true,
-                            child: settingsStore.showVideo
-                                ? settingsStore.fullScreen
-                                    ? Stack(
-                                        children: [
-                                          player,
-                                          if (settingsStore.showOverlay)
-                                            Row(
+                              final overlayChat = Visibility(
+                                visible: settingsStore.fullScreenChatOverlay,
+                                maintainState: true,
+                                child: Theme(
+                                  data: FrostyThemes().dark,
+                                  child: DefaultTextStyle(
+                                    style: DefaultTextStyle.of(context)
+                                        .style
+                                        .copyWith(color: Colors.white),
+                                    child: landscapeChat,
+                                  ),
+                                ),
+                              );
+
+                              return ColoredBox(
+                                color: settingsStore.showVideo
+                                    ? Colors.black
+                                    : Theme.of(context).scaffoldBackgroundColor,
+                                child: SafeArea(
+                                  bottom: false,
+                                  left: (settingsStore.landscapeCutout ==
+                                              LandscapeCutoutType.both ||
+                                          settingsStore.landscapeCutout ==
+                                              LandscapeCutoutType.left)
+                                      ? false
+                                      : true,
+                                  right: (settingsStore.landscapeCutout ==
+                                              LandscapeCutoutType.both ||
+                                          settingsStore.landscapeCutout ==
+                                              LandscapeCutoutType.right)
+                                      ? false
+                                      : true,
+                                  child: settingsStore.showVideo
+                                      ? settingsStore.fullScreen
+                                          ? Stack(
+                                              children: [
+                                                player,
+                                                if (settingsStore.showOverlay)
+                                                  Row(
+                                                    children: settingsStore
+                                                            .landscapeChatLeftSide
+                                                        ? [
+                                                            overlayChat,
+                                                            Expanded(
+                                                              child: overlay,
+                                                            ),
+                                                          ]
+                                                        : [
+                                                            Expanded(
+                                                              child: overlay,
+                                                            ),
+                                                            overlayChat,
+                                                          ],
+                                                  ),
+                                              ],
+                                            )
+                                          : Row(
                                               children: settingsStore
                                                       .landscapeChatLeftSide
                                                   ? [
-                                                      overlayChat,
-                                                      Expanded(child: overlay),
+                                                      landscapeChat,
+                                                      Expanded(child: video),
                                                     ]
                                                   : [
-                                                      Expanded(child: overlay),
-                                                      overlayChat,
+                                                      Expanded(child: video),
+                                                      landscapeChat,
                                                     ],
-                                            ),
-                                        ],
-                                      )
-                                    : Row(
-                                        children:
-                                            settingsStore.landscapeChatLeftSide
-                                                ? [
-                                                    landscapeChat,
-                                                    Expanded(child: video),
-                                                  ]
-                                                : [
-                                                    Expanded(child: video),
-                                                    landscapeChat,
-                                                  ],
-                                      )
-                                : Column(
-                                    children: [appBar, Expanded(child: chat)],
-                                  ),
-                          ),
-                        );
-                      }
-                      SystemChrome.setEnabledSystemUIMode(
-                        SystemUiMode.manual,
-                        overlays: SystemUiOverlay.values,
-                      );
-                      return SafeArea(
-                        child: Column(
-                          children: [
-                            if (!settingsStore.showVideo)
-                              appBar
-                            else
-                              AspectRatio(aspectRatio: 16 / 9, child: video),
-                            Expanded(child: chat),
-                          ],
+                                            )
+                                      : Column(
+                                          children: [
+                                            appBar,
+                                            Expanded(child: chat),
+                                          ],
+                                        ),
+                                ),
+                              );
+                            }
+                            SystemChrome.setEnabledSystemUIMode(
+                              SystemUiMode.manual,
+                              overlays: SystemUiOverlay.values,
+                            );
+                            return SafeArea(
+                              child: Container(
+                                color:
+                                    Theme.of(context).scaffoldBackgroundColor,
+                                child: Column(
+                                  children: [
+                                    if (!settingsStore.showVideo)
+                                      appBar
+                                    else
+                                      AspectRatio(
+                                        aspectRatio: 16 / 9,
+                                        child: video,
+                                      ),
+                                    Expanded(child: chat),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
-              );
+                      ),
+                    ),
+            ),
+          ],
+        );
       },
     );
     // If on Android, use PiPSwitcher to enable PiP functionality.
@@ -399,5 +452,31 @@ class _VideoChatState extends State<VideoChat> {
     SystemChrome.setPreferredOrientations([]);
 
     super.dispose();
+  }
+}
+
+class ChannelPageRoute {
+  static final _videoChat = GlobalKey<_VideoChatState>();
+  static void navigateTo(
+    BuildContext context, {
+    required String userId,
+    required String userName,
+    required String userLogin,
+  }) {
+    if (_videoChat.currentState?.widget.userId == userId) {
+      _videoChat.currentState?._videoStore.setMiniVedioMode(false);
+    } else {
+      Navigator.popUntil(context, (route) => route.isFirst);
+      Navigator.push(
+        context,
+        TranslucentOverlayRoute(
+          builder: (context) => VideoChat(
+            userId: userId,
+            userName: userName,
+            userLogin: userLogin,
+          ),
+        ),
+      );
+    }
   }
 }

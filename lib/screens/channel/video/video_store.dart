@@ -116,6 +116,13 @@ abstract class VideoStoreBase with Store {
   @readonly
   var _miniVedioMode = false;
 
+  /// The current top position of the player.
+  @readonly
+  var _topPosition = 0.0;
+
+  @readonly
+  var _isDragging = false;
+
   /// The current stream info, used for displaying relevant info on the overlay.
   @readonly
   StreamTwitch? _streamInfo;
@@ -392,7 +399,18 @@ abstract class VideoStoreBase with Store {
         _overlayVisible = false;
       }
     }
+    _topPosition = 0;
     _miniVedioMode = mode;
+  }
+
+  @action
+  void updateTopPosition(double topPosition) {
+    _topPosition = topPosition;
+  }
+
+  @action
+  void updateIsDragging(bool isDragging) {
+    _isDragging = isDragging;
   }
 
   /// Updates the stream info from the Twitch API.

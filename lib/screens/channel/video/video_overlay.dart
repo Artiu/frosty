@@ -35,7 +35,9 @@ class VideoOverlay extends StatelessWidget {
         Icons.adaptive.arrow_back_rounded,
         color: Colors.white,
       ),
-      onPressed: Navigator.of(context).pop,
+      onPressed: () {
+        videoStore.setMiniVedioMode(true);
+      },
     );
 
     final chatOverlayButton = Observer(

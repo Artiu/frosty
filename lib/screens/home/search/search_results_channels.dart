@@ -9,7 +9,6 @@ import 'package:frosty/widgets/alert_message.dart';
 import 'package:frosty/widgets/block_report_modal.dart';
 import 'package:frosty/widgets/loading_indicator.dart';
 import 'package:frosty/widgets/profile_picture.dart';
-import 'package:frosty/widgets/translucent_overlay_route.dart';
 import 'package:frosty/widgets/uptime.dart';
 import 'package:mobx/mobx.dart';
 
@@ -33,19 +32,11 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
       final channelInfo = await widget.searchStore.searchChannel(search);
 
       if (!context.mounted) return;
-      // remove until this page is the top level
-      Navigator.popUntil(context, (route) => route.isFirst);
-      // push new VedioChat
-
-      Navigator.push(
+      ChannelPageRoute.navigateTo(
         context,
-        TranslucentOverlayRoute(
-          builder: (context) => VideoChat(
-            userId: channelInfo.broadcasterId,
-            userName: channelInfo.broadcasterName,
-            userLogin: channelInfo.broadcasterLogin,
-          ),
-        ),
+        userId: channelInfo.broadcasterId,
+        userName: channelInfo.broadcasterName,
+        userLogin: channelInfo.broadcasterLogin,
       );
     } catch (error) {
       final snackBar = SnackBar(
@@ -98,18 +89,11 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
 
                       return InkWell(
                         onTap: () {
-                          // remove until this page is the top level
-                          Navigator.popUntil(context, (route) => route.isFirst);
-                          // push new VedioChat
-                          Navigator.push(
+                          ChannelPageRoute.navigateTo(
                             context,
-                            TranslucentOverlayRoute(
-                              builder: (context) => VideoChat(
-                                userId: channel.id,
-                                userName: channel.displayName,
-                                userLogin: channel.broadcasterLogin,
-                              ),
-                            ),
+                            userId: channel.id,
+                            userName: channel.displayName,
+                            userLogin: channel.broadcasterLogin,
                           );
                         },
                         onLongPress: () {

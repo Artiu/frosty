@@ -10,7 +10,6 @@ import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/block_report_modal.dart';
 import 'package:frosty/widgets/cached_image.dart';
 import 'package:frosty/widgets/loading_indicator.dart';
-import 'package:frosty/widgets/translucent_overlay_route.dart';
 import 'package:frosty/widgets/uptime.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -135,18 +134,11 @@ class LargeStreamCard extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        // remove until this page is the top level
-        Navigator.popUntil(context, (route) => route.isFirst);
-        // push new VedioChat
-        Navigator.push(
+        ChannelPageRoute.navigateTo(
           context,
-          TranslucentOverlayRoute(
-            builder: (context) => VideoChat(
-              userId: streamInfo.userId,
-              userName: streamInfo.userName,
-              userLogin: streamInfo.userLogin,
-            ),
-          ),
+          userId: streamInfo.userId,
+          userName: streamInfo.userName,
+          userLogin: streamInfo.userLogin,
         );
       },
       onLongPress: () {
