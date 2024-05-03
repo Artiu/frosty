@@ -81,6 +81,7 @@ class _VideoChatState extends State<VideoChat> {
       title: Text(
         getReadableName(_chatStore.displayName, _chatStore.channelName),
       ),
+      onBackPressed: _homeStore.closeVideoChat,
     );
 
     final player = GestureDetector(
@@ -268,14 +269,20 @@ class _VideoChatState extends State<VideoChat> {
                         if (didPop || _chatStore.assetsStore.showEmoteMenu) {
                           return;
                         }
+                        if (!settingsStore.showVideo) {
+                          _homeStore.closeVideoChat();
+                          return;
+                        }
                         _videoStore.setMiniVedioMode(true);
                       },
                       child: GestureDetector(
                         onVerticalDragStart: (_) {
+                          if (!settingsStore.showVideo) return;
                           _videoStore.updateIsDragging(true);
                         },
                         onVerticalDragUpdate: orientation ==
-                                Orientation.portrait
+                                    Orientation.portrait &&
+                                settingsStore.showVideo
                             ? (details) {
                                 final newPosition =
                                     _videoStore.topPosition + details.delta.dy;

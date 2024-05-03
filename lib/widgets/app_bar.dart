@@ -4,12 +4,14 @@ class FrostyAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget title;
   final bool? centerTitle;
   final List<Widget>? actions;
+  final void Function()? onBackPressed;
 
   const FrostyAppBar({
     super.key,
     required this.title,
     this.centerTitle,
     this.actions,
+    this.onBackPressed,
   });
 
   @override
@@ -18,7 +20,7 @@ class FrostyAppBar extends StatelessWidget implements PreferredSizeWidget {
       leading: IconButton(
         tooltip: 'Back',
         icon: Icon(Icons.adaptive.arrow_back_rounded),
-        onPressed: Navigator.of(context).pop,
+        onPressed: onBackPressed ?? Navigator.of(context).pop,
       ),
       title: title,
       centerTitle: centerTitle,
