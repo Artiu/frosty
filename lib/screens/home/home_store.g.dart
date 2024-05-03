@@ -27,6 +27,24 @@ mixin _$HomeStore on HomeStoreBase, Store {
     });
   }
 
+  late final _$_videoChatAtom =
+      Atom(name: 'HomeStoreBase._videoChat', context: context);
+
+  VideoChat? get videoChat {
+    _$_videoChatAtom.reportRead();
+    return super._videoChat;
+  }
+
+  @override
+  VideoChat? get _videoChat => videoChat;
+
+  @override
+  set _videoChat(VideoChat? value) {
+    _$_videoChatAtom.reportWrite(value, super._videoChat, () {
+      super._videoChat = value;
+    });
+  }
+
   late final _$HomeStoreBaseActionController =
       ActionController(name: 'HomeStoreBase', context: context);
 
@@ -36,6 +54,36 @@ mixin _$HomeStore on HomeStoreBase, Store {
         name: 'HomeStoreBase.handleTap');
     try {
       return super.handleTap(index);
+    } finally {
+      _$HomeStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void openVideoChat(
+      {required BuildContext context,
+      required String userId,
+      required String userName,
+      required String userLogin}) {
+    final _$actionInfo = _$HomeStoreBaseActionController.startAction(
+        name: 'HomeStoreBase.openVideoChat');
+    try {
+      return super.openVideoChat(
+          context: context,
+          userId: userId,
+          userName: userName,
+          userLogin: userLogin);
+    } finally {
+      _$HomeStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void closeVideoChat() {
+    final _$actionInfo = _$HomeStoreBaseActionController.startAction(
+        name: 'HomeStoreBase.closeVideoChat');
+    try {
+      return super.closeVideoChat();
     } finally {
       _$HomeStoreBaseActionController.endAction(_$actionInfo);
     }

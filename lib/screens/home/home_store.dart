@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:frosty/apis/twitch_api.dart';
+import 'package:frosty/screens/channel/channel.dart';
+import 'package:frosty/screens/channel/video/video_store.dart';
 import 'package:frosty/screens/settings/stores/auth_store.dart';
+import 'package:frosty/screens/settings/stores/settings_store.dart';
 import 'package:mobx/mobx.dart';
+import 'package:provider/provider.dart';
 
 part 'home_store.g.dart';
 
@@ -30,6 +35,9 @@ abstract class HomeStoreBase with Store {
   /// The current selected index/tab of the bottom navigation bar.
   @readonly
   var _selectedIndex = 0;
+
+  @readonly
+  VideoChat? _videoChat;
 
   late final ReactionDisposer _disposeReaction;
   HomeStoreBase({required this.authStore}) {
@@ -93,6 +101,37 @@ abstract class HomeStoreBase with Store {
         }
       }
     }
+  }
+
+  @action
+  void openVideoChat({
+    required BuildContext context,
+    required String userId,
+    required String userName,
+    required String userLogin,
+  }) {
+    if (userId == _videoChat?.userId) {
+      _videoChat?.videoStore.setMiniVedioMode(false);
+      return;
+    }
+    final videoStore = VideoStore(
+      userLogin: userLogin,
+      twitchApi: context.read<TwitchApi>(),
+      authStore: context.read<AuthStore>(),
+      settingsStore: context.read<SettingsStore>(),
+    );
+    _videoChat = VideoChat(
+      key: ValueKey('VideoChat-$userId'),
+      userId: userId,
+      userName: userName,
+      userLogin: userLogin,
+      videoStore: videoStore,
+    );
+  }
+
+  @action
+  void closeVideoChat() {
+    _videoChat = null;
   }
 
   void dispose() {

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:frosty/screens/channel/chat/emote_menu/emote_menu_panel.dart';
@@ -96,16 +94,10 @@ class Chat extends StatelessWidget {
             if (chatStore.settings.showBottomBar)
               ChatBottomBar(chatStore: chatStore),
             PopScope(
-              canPop: Platform.isIOS,
               onPopInvoked: (didPop) {
                 if (didPop) return;
-
-                // If pressing the back button on Android while the emote menu
-                // is open, close it instead of going back to the streams list.
                 if (chatStore.assetsStore.showEmoteMenu) {
                   chatStore.assetsStore.showEmoteMenu = false;
-                } else {
-                  Navigator.of(context).pop();
                 }
               },
               child: AnimatedContainer(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:frosty/models/channel.dart';
-import 'package:frosty/screens/channel/channel.dart';
+import 'package:frosty/screens/home/home_store.dart';
 import 'package:frosty/screens/home/search/search_store.dart';
 import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/alert_message.dart';
@@ -11,6 +11,7 @@ import 'package:frosty/widgets/loading_indicator.dart';
 import 'package:frosty/widgets/profile_picture.dart';
 import 'package:frosty/widgets/uptime.dart';
 import 'package:mobx/mobx.dart';
+import 'package:provider/provider.dart';
 
 class SearchResultsChannels extends StatefulWidget {
   final SearchStore searchStore;
@@ -27,13 +28,15 @@ class SearchResultsChannels extends StatefulWidget {
 }
 
 class _SearchResultsChannelsState extends State<SearchResultsChannels> {
+  late final _homeStore = context.read<HomeStore>();
+
   Future<void> _handleSearch(BuildContext context, String search) async {
     try {
       final channelInfo = await widget.searchStore.searchChannel(search);
 
       if (!context.mounted) return;
-      ChannelPageRoute.navigateTo(
-        context,
+      _homeStore.openVideoChat(
+        context: context,
         userId: channelInfo.broadcasterId,
         userName: channelInfo.broadcasterName,
         userLogin: channelInfo.broadcasterLogin,
@@ -89,8 +92,8 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
 
                       return InkWell(
                         onTap: () {
-                          ChannelPageRoute.navigateTo(
-                            context,
+                          _homeStore.openVideoChat(
+                            context: context,
                             userId: channel.id,
                             userName: channel.displayName,
                             userLogin: channel.broadcasterLogin,

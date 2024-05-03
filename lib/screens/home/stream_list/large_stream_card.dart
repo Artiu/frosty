@@ -3,8 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frosty/models/stream.dart';
-import 'package:frosty/screens/channel/channel.dart';
 import 'package:frosty/screens/channel/video/video_bar.dart';
+import 'package:frosty/screens/home/home_store.dart';
 import 'package:frosty/screens/settings/stores/auth_store.dart';
 import 'package:frosty/utils.dart';
 import 'package:frosty/widgets/block_report_modal.dart';
@@ -134,12 +134,12 @@ class LargeStreamCard extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        ChannelPageRoute.navigateTo(
-          context,
-          userId: streamInfo.userId,
-          userName: streamInfo.userName,
-          userLogin: streamInfo.userLogin,
-        );
+        context.read<HomeStore>().openVideoChat(
+              context: context,
+              userId: streamInfo.userId,
+              userName: streamInfo.userName,
+              userLogin: streamInfo.userLogin,
+            );
       },
       onLongPress: () {
         HapticFeedback.mediumImpact();
